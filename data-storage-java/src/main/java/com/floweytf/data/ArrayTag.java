@@ -63,4 +63,9 @@ public class ArrayTag extends CollectionTag implements Iterable<AbstractTag> {
     public Iterator<AbstractTag> iterator() {
         return delegate.iterator();
     }
+
+    @Override
+    public byte getType() {
+        return TAG_ARRAY;
+    }
 }

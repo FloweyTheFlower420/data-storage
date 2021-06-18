@@ -21,4 +21,6 @@ public abstract class AbstractTag {
     public static final int TAG_DOUBLE = 8;
 
     public static final int TAG_STRING = 9;
+
+    public abstract byte getType();
 }

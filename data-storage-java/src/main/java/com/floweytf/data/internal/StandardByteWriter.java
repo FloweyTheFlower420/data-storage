@@ -1,14 +1,12 @@
 package com.floweytf.data.internal;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.OutputStream;
-import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 
 public class StandardByteWriter {
     OutputStream os;
-    public StandardByteWriter(OutputStream is) {
+    public StandardByteWriter(OutputStream os) {
         this.os = os;
     }
 
@@ -17,28 +15,31 @@ public class StandardByteWriter {
     }
 
     public void write(short s) throws IOException {
-        os.write(new byte[]{(byte)(s & 0x00FF),(byte)((s & 0xFF00)>>8)});
-    }
-
-    public void write(int a) throws IOException {
         os.write(new byte[] {
-            (byte) ((a >> 24) & 0xFF),
-            (byte) ((a >> 16) & 0xFF),
-            (byte) ((a >> 8) & 0xFF),
-            (byte) (a & 0xFF)
+            (byte) s,
+            (byte) ((s >> 8) & 0xFF)
         });
     }
 
-    public void write(long value) throws IOException {
+    public void write(int i) throws IOException {
         os.write(new byte[] {
-            (byte) (value >> 56),
-            (byte) (value >> 48),
-            (byte) (value >> 40),
-            (byte) (value >> 32),
-            (byte) (value >> 24),
-            (byte) (value >> 16),
-            (byte) (value >> 8),
-            (byte) value
+            (byte) i,
+            (byte) ((i >> 8) & 0xFF),
+            (byte) ((i >> 16) & 0xFF),
+            (byte) ((i >> 24) & 0xFF)
+        });
+    }
+
+    public void write(long l) throws IOException {
+        os.write(new byte[]{
+            (byte) l,
+            (byte) (l >> 8),
+            (byte) (l >> 16),
+            (byte) (l >> 24),
+            (byte) (l >> 32),
+            (byte) (l >> 40),
+            (byte) (l >> 48),
+            (byte) (l >> 56),
         });
     }
 

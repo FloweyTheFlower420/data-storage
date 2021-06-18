@@ -55,4 +55,9 @@ public class ObjectTag extends CollectionTag implements Iterable<Map.Entry<Strin
     public Iterator<Map.Entry<String, AbstractTag>> iterator() {
         return delegate.entrySet().iterator();
     }
+
+    @Override
+    public byte getType() {
+        return TAG_OBJECT;
+    }
 }

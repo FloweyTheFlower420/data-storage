@@ -15,4 +15,9 @@ public class FloatTag extends PrimitiveTag<Float>{
     public void writeTo(StandardByteWriter writer) throws IOException {
         writer.write(delegate);
     }
+
+    @Override
+    public byte getType() {
+        return TAG_FLOAT;
+    }
 }

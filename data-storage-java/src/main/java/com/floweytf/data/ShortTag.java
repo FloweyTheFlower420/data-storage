@@ -15,4 +15,9 @@ public class ShortTag extends PrimitiveTag<Short> {
     public void writeTo(StandardByteWriter writer) throws IOException {
         writer.write(delegate);
     }
+
+    @Override
+    public byte getType() {
+        return TAG_SHORT;
+    }
 }

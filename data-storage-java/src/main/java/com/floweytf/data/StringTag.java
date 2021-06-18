@@ -15,4 +15,9 @@ public class StringTag extends PrimitiveTag<String> {
     public void writeTo(StandardByteWriter writer) throws IOException {
         writer.write(delegate);
     }
+
+    @Override
+    public byte getType() {
+        return TAG_STRING;
+    }
 }

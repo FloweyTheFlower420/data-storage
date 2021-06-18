@@ -1,29 +1,19 @@
 package com.floweytf.data;
 
+import com.floweytf.data.internal.DeserializeStackFrame;
+import com.floweytf.data.internal.SerializeStackFrame;
 import com.floweytf.data.internal.StandardByteReader;
 import com.floweytf.data.internal.StandardByteWriter;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.util.Map;
 import java.util.Stack;
 
 import static com.floweytf.data.AbstractTag.*;
 
 public class TagCodec {
-    private static class StackFrame {
-        CollectionTag tag;
-        int index;
-        int size;
-        String name;
-
-        public StackFrame(CollectionTag tag, int index, int size, String name) {
-            this.tag = tag;
-            this.index = index;
-            this.size = size;
-            this.name = name;
-        }
-    }
 
     private static AbstractTag getFromInt(byte type) {
         switch (type) {
@@ -53,73 +43,66 @@ public class TagCodec {
 
     public static ObjectTag deserialize(InputStream i) throws IOException {
         // the reader that we will use to read things in a standard fashion
-        StandardByteReader input = new StandardByteReader(i);
+        StandardByteReader reader = new StandardByteReader(i);
         // stack frames to emulate recursive algo
-        Stack<StackFrame> stack = new Stack<>();
+        Stack<DeserializeStackFrame> stack = new Stack<>();
 
-        StackFrame frame = new StackFrame(
+        DeserializeStackFrame frame = new DeserializeStackFrame(
             new ObjectTag(),
             0,
-            input.readInt(),
+            reader.readInt(),
             ""
         );
-
-        boolean state = false; // false for object, true for array
 
         while (true) {
             while (frame.index == frame.size && stack.size() != 0) {
                 // we have reached the end of the iteration
-                StackFrame newFrame = stack.pop();
+                DeserializeStackFrame newFrame = stack.pop();
                 newFrame.tag.put(newFrame.name, frame.tag);
                 frame = newFrame;
-                state = !(frame.tag instanceof ObjectTag);
             }
             if (stack.size() == 0 && frame.index == frame.size)
                 break;
             // the state for an object
             frame.index++;
 
-            if (state) {
+            if (frame.tag instanceof ArrayTag) {
                 // we have/are reading another object
                 // read the type
-                byte type = input.readByte();
+                byte type = reader.readByte();
                 // obtain the tag
                 AbstractTag t = getFromInt(type);
                 if (t instanceof ObjectTag) {
                     // push to stack
                     stack.push(frame);
-                    frame = new StackFrame((CollectionTag) t, 0, input.readInt(), "");
-                    state = false;
+                    frame = new DeserializeStackFrame((CollectionTag) t, 0, reader.readInt(), "");
                 }
                 else if (t instanceof ArrayTag) {
                     stack.push(frame);
-                    frame = new StackFrame((CollectionTag) t, 0, input.readInt(), "");
-                    state = true;
+                    frame = new DeserializeStackFrame((CollectionTag) t, 0, reader.readInt(), "");
                 }
                 else {
-                    ((PrimitiveTag<?>) t).readFrom(input);
+                    ((PrimitiveTag<?>) t).readFrom(reader);
                     frame.tag.put(frame.name, t);
                 }
             }
             else {
                 // we have/are reading another object
                 // read the name and type
-                frame.name = input.readString();
-                byte type = input.readByte();
+                frame.name = reader.readString();
+                byte type = reader.readByte();
                 // obtain the tag
                 AbstractTag t = getFromInt(type);
                 if (t instanceof ObjectTag) {
                     stack.push(frame);
-                    frame = new StackFrame((CollectionTag) t, 0, input.readInt(), "");
-                    state = false;
+                    frame = new DeserializeStackFrame((CollectionTag) t, 0, reader.readInt(), "");
                 }
                 else if (t instanceof ArrayTag) {
                     stack.push(frame);
-                    frame = new StackFrame((CollectionTag) t, 0, input.readInt(), "");
-                    state = true;
+                    frame = new DeserializeStackFrame((CollectionTag) t, 0, reader.readInt(), "");
                 }
                 else {
-                    ((PrimitiveTag<?>) t).readFrom(input);
+                    ((PrimitiveTag<?>) t).readFrom(reader);
                     frame.tag.put(frame.name, t);
                 }
             }
@@ -128,9 +111,59 @@ public class TagCodec {
         return (ObjectTag) frame.tag;
     }
 
-    public static void serialize(OutputStream o) throws IOException {
+    public static void serialize(OutputStream o, ObjectTag root) throws IOException {
         StandardByteWriter writer = new StandardByteWriter(o);
+        Stack<SerializeStackFrame> stack = new Stack<>();
+        SerializeStackFrame frame = new SerializeStackFrame(
+            root,
+            root.iterator()
+        );
 
+        writer.write(root.size());
 
+        while(true) {
+            while (!frame.iterator.hasNext() && stack.size() != 0) {
+                frame = stack.pop();
+            }
+            if (stack.size() == 0 && !frame.iterator.hasNext())
+                break;
+
+            if(frame.tag instanceof ArrayTag) {
+                AbstractTag t = (AbstractTag) frame.iterator.next();
+                writer.write(t.getType());
+                if(t instanceof ObjectTag) {
+                    stack.push(frame);
+                    frame = new SerializeStackFrame((CollectionTag) t, ((ObjectTag)t).iterator());
+                    writer.write(frame.tag.size());
+                }
+                else if(t instanceof ArrayTag) {
+                    stack.push(frame);
+                    frame = new SerializeStackFrame((CollectionTag) t, ((ArrayTag)t).iterator());
+                    writer.write(frame.tag.size());
+                }
+                else {
+                    ((PrimitiveTag<?>)t).writeTo(writer);
+                }
+            }
+            else {
+                @SuppressWarnings("unchecked")
+                Map.Entry<String, AbstractTag> t = (Map.Entry<String, AbstractTag>) frame.iterator.next();
+                writer.write(t.getKey());
+                writer.write(t.getValue().getType());
+                if(t.getValue() instanceof ObjectTag) {
+                    stack.push(frame);
+                    frame = new SerializeStackFrame((CollectionTag) t.getValue(), ((ObjectTag) t.getValue()).iterator());
+                    writer.write(frame.tag.size());
+                }
+                else if(t.getValue() instanceof ArrayTag) {
+                    stack.push(frame);
+                    frame = new SerializeStackFrame((CollectionTag) t.getValue(), ((ArrayTag) t.getValue()).iterator());
+                    writer.write(frame.tag.size());
+                }
+                else {
+                    ((PrimitiveTag<?>)t.getValue()).writeTo(writer);
+                }
+            }
+        }
     }
 }
