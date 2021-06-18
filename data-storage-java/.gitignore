@@ -1,0 +1,4 @@
+build/
+login.properties
+.gradle/
+.idea/

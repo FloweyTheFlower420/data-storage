@@ -1,0 +1,51 @@
+plugins {
+    id 'java'
+    id 'maven-publish'
+}
+
+group 'com.floweytf.data'
+version '1.0'
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+implementation 'org.jetbrains:annotations:20.1.0'
+}
+
+Properties props = new Properties()
+def propFile = file('login.properties')
+def un = ""
+def pwd = ""
+if (propFile.canRead()){
+    props.load(new FileInputStream(propFile))
+
+    if (props!=null && props.containsKey('password') && props.containsKey('username')) {
+        un = props['username']
+        pwd = props['password']
+    }
+}
+
+System.out.println("Running with " + un+ ", password: " + pwd);
+
+publishing {
+    publications {
+        myLibrary(MavenPublication) {
+            from components.java
+        }
+    }
+
+    repositories {
+        maven {
+            url = 'http://maven.floweytf.com/releases/'
+            credentials {
+                username = un
+                password = pwd
+            }
+            authentication {
+                basic(BasicAuthentication)
+            }
+        }
+    }
+}
